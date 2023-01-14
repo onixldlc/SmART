@@ -48,7 +48,7 @@ class AudioPlayer:
         else:
             outdata[:] = np.zeros((frames,1))
 
-    def select_virtual_input(name):
+    def select_virtual_input(self, name):
         devices = sd.query_devices()
         virtual_inputs = []
         for device in devices:
