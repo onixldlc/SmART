@@ -3,11 +3,12 @@ import numpy as np
 import sounddevice as sd
 
 class AudioPlayer:
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, device):
         self.ip = ip
         self.port = port
         self.samplerate = 44100
         self.channels = 1
+        self.device=device
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.ip, self.port))
         self.server_socket.listen(5)
@@ -17,9 +18,14 @@ class AudioPlayer:
         print("Waiting for client to connect...")
         self.client_socket, address = self.server_socket.accept()
         print(f"Client {address} connected.")
-        with sd.OutputStream(callback=self.audio_callback, blocksize=256):
-            input("press Enter to stop the listening")
-            self.client_socket.close()
+        if(self.device==""):
+            with sd.OutputStream(callback=self.audio_callback, blocksize=256):
+                input("press Enter to stop the listening")
+                self.client_socket.close()
+        else:
+            with sd.OutputStream(callback=self.audio_callback, blocksize=256, device=self.device):
+                input("press Enter to stop the listening")
+                self.client_socket.close()
 
     def stop_playing(self):
         self.stream.stop()
@@ -43,5 +49,6 @@ class AudioPlayer:
             outdata[:] = np.zeros((frames,1))
 
 if __name__ == "__main__":
-    player = AudioPlayer("0.0.0.0", 55452)
+    device = input("Enter the name of the output device you want to use: (default speaker)")
+    player = AudioPlayer("0.0.0.0", 55452, device)
     player.start_playing()

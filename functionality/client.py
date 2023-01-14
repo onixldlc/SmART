@@ -24,7 +24,9 @@ class AudioRecorder:
         self.stream.start()
 
 if __name__ == "__main__":
-    recorder = AudioRecorder("192.168.0.123", 55452)
+    ip = input("Enter the ip address of the server: ")
+    print(ip)
+    recorder = AudioRecorder(ip, 55452)
     recorder.start_recording()
     input("Press enter to stop recording.")
     recorder.stream.stop()
