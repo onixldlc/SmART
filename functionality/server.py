@@ -23,7 +23,7 @@ class AudioPlayer:
                 input("press Enter to stop the listening")
                 self.client_socket.close()
         else:
-            with sd.OutputStream(callback=self.audio_callback, blocksize=256, device=self.select_virtual_input(device)):
+            with sd.OutputStream(callback=self.audio_callback, blocksize=256, device=self.select_virtual_input(self.device)):
                 input("press Enter to stop the listening")
                 self.client_socket.close()
 
@@ -63,6 +63,6 @@ class AudioPlayer:
             return virtual_inputs[0]['name']
 
 if __name__ == "__main__":
-    device = input("Enter the name of the output device you want to use: (default speaker)")
+    device = input("Enter the name of the output device you want to use (default output device):")
     player = AudioPlayer("0.0.0.0", 55452, device)
     player.start_playing()
