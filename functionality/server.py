@@ -23,7 +23,7 @@ class AudioPlayer:
                 input("press Enter to stop the listening")
                 self.client_socket.close()
         else:
-            with sd.OutputStream(callback=self.audio_callback, blocksize=256, device=self.device):
+            with sd.OutputStream(callback=self.audio_callback, blocksize=256, device=self.select_virtual_input(device)):
                 input("press Enter to stop the listening")
                 self.client_socket.close()
 
@@ -47,6 +47,20 @@ class AudioPlayer:
             self.audio_buffer = self.audio_buffer[frames:]
         else:
             outdata[:] = np.zeros((frames,1))
+
+    def select_virtual_input(name):
+        devices = sd.query_devices()
+        virtual_inputs = []
+        for device in devices:
+            if device['name'].startswith(name):
+                virtual_inputs.append(device)
+        if len(virtual_inputs)>1:
+            for i, device in enumerate(virtual_inputs):
+                print(i, device['name'])
+            device_index = int(input("Select the device index:"))
+            return device_index
+        else:
+            return virtual_inputs[0]['name']
 
 if __name__ == "__main__":
     device = input("Enter the name of the output device you want to use: (default speaker)")
