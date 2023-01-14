@@ -1,6 +1,7 @@
 import socket
 import sounddevice as sd
 import numpy as np
+import argparse
 
 class AudioRecorder:
     def __init__(self, ip, port):
@@ -23,10 +24,23 @@ class AudioRecorder:
         self.stream = sd.InputStream(callback=self.audio_callback, channels=self.channels, samplerate=self.samplerate)
         self.stream.start()
 
+
+
+def create_parser():
+    parser = argparse.ArgumentParser(description='Run in client mode')
+    parser.add_argument("-p", "--port", help="specify port number", type=int, default=55452)
+    parser.add_argument("ip", type=str, help="specify ip address")
+    return parser
+
 if __name__ == "__main__":
-    ip = input("Enter the ip address of the server: ")
-    print(ip)
-    recorder = AudioRecorder(ip, 55452)
+    parser = create_parser()
+    args = parser.parse_args()
+
+    ip = args.ip
+    port = args.port
+
+    print(ip, port)
+    recorder = AudioRecorder(ip, port)
     recorder.start_recording()
     input("Press enter to stop recording.")
     recorder.stream.stop()
