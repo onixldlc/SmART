@@ -20,6 +20,7 @@ class AudioPlayer:
             self.device = self.select_virtual_input()
 
         print(self.device)
+        print(self.channels)
         print("Waiting for client to connect...")
         self.client_socket, address = self.server_socket.accept()
         print(f"Client {address} connected.")
@@ -38,9 +39,11 @@ class AudioPlayer:
 
     def audio_callback(self, outdata, frames, time, status):
         data = self.client_socket.recv(1024)
-        # if not data:
-        #     raise sd.CallbackStop
+        if not data:
+            raise sd.CallbackStop
         data = np.frombuffer(data, dtype=np.float32)
+        # print(data.shape)
+        # assert data.shape[1] == self.channels, f"Number of channels of the audio data {data.shape[1]} does not match the input device {self.channels} channels"
         
         try:
             self.audio_buffer = np.concatenate((self.audio_buffer, data))
@@ -63,8 +66,10 @@ class AudioPlayer:
         if len(virtual_inputs)>1:
             for i, device in enumerate(virtual_inputs):
                 print(i, device['name'], device['max_input_channels'], "in", device['max_output_channels'], "out")
-            device_index = int(input("Select the device index:"))
-            self.channels = virtual_inputs[device_index]['max_output_channels']
+            index = int(input("Select the device index:"))
+            device_index = virtual_inputs[index]['index']
+            self.channels = virtual_inputs[index]['max_output_channels']
+            print(virtual_inputs[index])
             return device_index
         if len(virtual_inputs)==0:
             print("sorry no virtual input found with the name: ", self.device)
