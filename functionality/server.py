@@ -1,86 +1,50 @@
-import socket
-import numpy as np
-import sounddevice as sd
+from utils.device_picker import deviceHandler
 import argparse
+import asyncio
 
 class AudioPlayer:
     def __init__(self, ip, port, device):
         self.ip = ip
         self.port = port
-        self.samplerate = 44100
-        self.channels = 1
-        self.device=device
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.bind((self.ip, self.port))
-        self.server_socket.listen(5)
-        self.client_socket = None
-
+        self.deviceHandler = deviceHandler()
+        self.device_index = device
+    
     def start_playing(self):
-        if(self.device != None):
-            self.device = self.select_virtual_input()
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(self.server_handler())
+        loop.run_until_complete(task)
+        # loop.run_in_executor(None, loop.run_until_complete, task)
+        # input("Press Enter to quit...\n")
+        # task.cancel()
+        # loop.stop()
 
-        print(self.device)
-        print(self.channels)
+    async def audio_callback(self, reader, writer):
+        connect_from = writer.get_extra_info('peername')
+        print(f"Client {connect_from[0]}:{connect_from[1]} connected.")
+        while True:
+            data = await reader.read(self.deviceHandler.CHUNK)
+            if not data:
+                break
+            self.stream.write(data)
+        print(f"Client {connect_from[0]}:{connect_from[1]} disconnected.")
+        writer.close()
+
+    async def server_handler(self):
+        self.stream = self.deviceHandler.create_stream_handler(self.device_index)
+        self.stream.start_stream()
+
+        self.server = await asyncio.start_server(self.audio_callback, self.ip, self.port)
         print("Waiting for client to connect...")
-        self.client_socket, address = self.server_socket.accept()
-        print(f"Client {address} connected.")
-        if(self.device == None):
-            with sd.OutputStream(callback=self.audio_callback, blocksize=256):
-                input("press Enter to stop the listening")
-                self.client_socket.close()
-        else:
-            with sd.OutputStream(callback=self.audio_callback, blocksize=256, device=self.device, channels=self.channels):
-                input("press Enter to stop the listening")
-                self.client_socket.close()
+        await self.server.serve_forever()
 
-    def stop_playing(self):
-        self.stream.stop()
-        self.server_socket.close()
 
-    def audio_callback(self, outdata, frames, time, status):
-        data = self.client_socket.recv(1024)
-        if not data:
-            raise sd.CallbackStop
-        data = np.frombuffer(data, dtype=np.float32)
-        # print(data.shape)
-        # assert data.shape[1] == self.channels, f"Number of channels of the audio data {data.shape[1]} does not match the input device {self.channels} channels"
-        
-        try:
-            self.audio_buffer = np.concatenate((self.audio_buffer, data))
-        except AttributeError:
-            self.audio_buffer = data
 
-        if len(self.audio_buffer) > frames:
-            outdata[:] = self.audio_buffer[:frames].reshape(-1, 1)
-            self.audio_buffer = self.audio_buffer[frames:]
-        else:
-            outdata[:] = np.zeros((frames,1))
 
-    def select_virtual_input(self):
-        devices = sd.query_devices()
-        print(devices)
-        virtual_inputs = []
-        for device in devices:
-            if device['name'].startswith(self.device):
-                virtual_inputs.append(device)
-        if len(virtual_inputs)>1:
-            for i, device in enumerate(virtual_inputs):
-                print(i, device['name'], device['max_input_channels'], "in", device['max_output_channels'], "out")
-            index = int(input("Select the device index:"))
-            device_index = virtual_inputs[index]['index']
-            self.channels = virtual_inputs[index]['max_output_channels']
-            print(virtual_inputs[index])
-            return device_index
-        if len(virtual_inputs)==0:
-            print("sorry no virtual input found with the name: ", self.device)
-            exit()
-        else:
-            return virtual_inputs[0]['name']
 
 def create_parser():
     parser = argparse.ArgumentParser(description='Run in server mode')
     parser.add_argument("-p", "--port", help="specify port number", type=int, default=55452)
-    parser.add_argument("device", nargs='?', type=str, const="", help="specify device name")
+    parser.add_argument("-d", "--device", help="specify device index", type=int, default=-1)
     return parser
 
 if __name__ == "__main__":
